@@ -2,23 +2,34 @@ require 'sqlite3'
 
 module Selection
     def find(*ids)
-        if ids.length == 1
+        valid_input = false
+        ids.each do |x|
+            if x.is_a?(String) == false || x > 0
+                valid_input == true
+            end
+        end
+        
+        if ids.length == 1 && valid_input
             find_one(ids.first)
-        else
+        elsif valid_input
             rows = connection.execute <<-SQL
                 SELECT #{columns.join ","} FROM #{table}
                 WHERE id IN (#{ids.join(",")});
             SQL
             
             rows_to_array(rows)
+        else
+            puts "Please provide a valid input"
         end
     end
     
     def find_one(id)
-        row = connection.get_first_row <<-SQL
-            SELECT #{columns.join ","} FROM #{table}
-            WHERE id = #{id};
-        SQL
+        if id.is_a?(String) == false && x > 0
+            row = connection.get_first_row <<-SQL
+                SELECT #{columns.join ","} FROM #{table}
+                WHERE id = #{id};
+            SQL
+        end
         
         init_object_from_row(row)
     end
@@ -80,6 +91,34 @@ module Selection
         SQL
         
         rows_to_array(rows)
+    end
+        
+    def self.method_missing(m, *arg, &block)
+        if m.to_s =~ /^find_by_(.*)$/
+            find_by($1.to_sym, arg.first)
+        else
+            super
+        end
+    end
+    
+    def find_each(hash)
+        rows = connection.execute <<-SQL
+            SELECT #{columns.join(",")} FROM #{table}
+            WHERE id = #{hash[:start]} LIMIT #{hash[:batch_size]}
+        SQL
+        current_row_index = 0
+        while current_row_index <= rows.length - 1
+            yield rows[current_row_index]
+            current_row_index += 1
+        end
+    end
+        
+    def find_in_batches(hash)
+        rows = connection.execute <<-SQL
+            SELECT #{columns.join(",")} FROM #{table}
+            WHERE id = #{hash[:start]} LIMIT #{hash[:batch_size]}
+        SQL
+        yield rows
     end
     
     private
