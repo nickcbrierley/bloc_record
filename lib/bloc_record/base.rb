@@ -20,5 +20,12 @@ module BlocRecord
                 self.instance_variable_set("@#{col}", options[col])
             end
         end
+        
+        def method_missing(method, *args, &block)
+            if method.include? "update"
+                m = method[methid,index("_")+1..-1]
+            end
+            update_attribute(m, arg[0])
+        end
     end
 end
