@@ -106,14 +106,20 @@ module Selection
     end
     
     def order(*args)
-        if args.count > 1
-            order = args.join(",")
-        else
-            order = args.first.to_s
+        orders = []
+        args.each do |arg|
+            case arg
+            when String
+                orders << arg
+            when Symbol
+                orders << arg
+            when Hash 
+                orders << arg.map { |key, value| "#{key} #{value}" }.join(',')
+            end
         end
         rows = connection.execute <<-SQL
             SELECT * FROM #{table}
-            ORDER BY #{order};
+            ORDER BY #{orders.join(',')};
         SQL
         rows_to_array(rows)
     end
@@ -135,6 +141,14 @@ module Selection
                     SELECT * FROM #{table}
                     INNER JOIN #{args.first} ON #{args.first}.#{table}_id = #{table}.id
                 SQL
+            when Hash
+                key = args.first.keys[0]
+                value = args.first.values[0]
+                rows = connection.execute <<-SQL
+                    SELECT * FROM
+                    INNER JOIN #{key} ON #{key}.#{table}_id = #{table}.id
+                    INNER JOIN #{value} ON #{value}.#{key}_id = #{key}.id
+                SQL
             end
         end
         
@@ -150,6 +164,8 @@ module Selection
     end
     
     def rows_to_array(rows)
-        rows.map { |row| new(Hash[columns.zip(row)]) }
+        collection = BlocRecord::Collection.new
+        rows.each { |row| collection << new(Hash[columns.zip(row)])}
+        collection
     end
 end
