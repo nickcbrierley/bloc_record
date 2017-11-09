@@ -52,7 +52,7 @@ module Persistence
                 where_clause = "WHERE id = #{id.first};"
             end
             connection.execute <<-SQL
-                DELETE FROM #{table} #where_clause}
+                DELETE FROM #{table} #{where_clause}
             SQL
             
             true
@@ -93,11 +93,17 @@ module Persistence
             new(data)
         end
         
-        def destroy_all(conditions_hash=nil)
-            if conditions_hash && !conditions_hash.empty?
+        def destroy_all(arg)
+            if arg.class == String
+                conditions = arg.to_s
+            elsif arg.class == Array
+                conditions = arg.join('=')
+            elsif arg.class == Hash
                 conditions_hash = BlocRecord::Utility.convert_keys(conditions_hash)
                 conditions = conditions_hash.map {|key, value| "#{key}=#{BlocRecord::Utility.sql_strings(value)}"}.join(" and ")
- 
+            end
+            
+            if conditions
                 connection.execute <<-SQL
                     DELETE FROM #{table}
                     WHERE #{conditions};
